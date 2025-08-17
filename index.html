@@ -4,10 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ADMI — Consulta de despachos</title>
+
+  <!-- Turbo: reduce latencia al conectar con Apps Script -->
+  <link rel="preconnect" href="https://script.google.com">
+  <link rel="dns-prefetch" href="https://script.google.com">
+
   <style>
     :root{
-      --bg:#0f172a;      /* azul oscuro */
-      --card:#111827;
+      --bg:#5675bc;      /* azul oscuro */
+      --card:#e7ebf3;
       --muted:#94a3b8;
       --text:#e5e7eb;
       --accent:#2563eb;
@@ -45,8 +50,8 @@
     button.secondary:hover{ border-color:#2b3b52; }
 
     .tabs{ display:flex; gap:8px; margin-bottom:12px }
-    .tab{ padding:10px 14px; border-radius:999px; background:#0b1220; color:var(--muted); cursor:pointer; border:1px solid #1f2937; transition: background-color .2s ease, color .2s ease, border-color .2s ease, transform .15s ease; }
-    .tab:hover{ color:#cbd5e1; border-color:#2b3b52; transform:translateY(-1px); }
+    .tab{ padding:10px 14px; border-radius:999px; background:#0b1220; color:#cbd5e1; cursor:pointer; border:1px solid #1f2937; transition: background-color .2s ease, color .2s ease, border-color .2s ease, transform .15s ease; }
+    .tab:hover{ color:#e5e7eb; border-color:#2b3b52; transform:translateY(-1px); }
     .tab.active{ background:var(--accent); color:white; border-color:transparent }
 
     table{ width:100%; border-collapse:separate; border-spacing:0; margin-top:12px; }
@@ -54,19 +59,15 @@
     tr{ transition: background-color .2s ease; }
     tr:hover td{ background:#0b1220 }
 
-    /* Animación de entrada de filas */
-    tbody tr.row-anim{ opacity: 0; transform: translateY(6px) scale(.98); animation: fadeUp .35s ease forwards; }
-    @keyframes fadeUp{ to { opacity:1; transform: translateY(0) scale(1); } }
+    tbody tr.row-anim{ opacity:0; transform: translateY(6px) scale(.98); animation: fadeUp .35s ease forwards; }
+    @keyframes fadeUp{ to{ opacity:1; transform: translateY(0) scale(1);} }
 
     .badge{ display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:700 }
     .b-ok{ background:rgba(22,163,74,.15); color:#86efac; }
     .b-warn{ background:rgba(245,158,11,.15); color:#fcd34d; }
     .b-bad{ background:rgba(220,38,38,.15); color:#fca5a5; }
-
-    /* Micro-animación badge */
-    .badge-anim{ position: relative; animation: pop .25s ease-out, shine 1.2s ease-out; }
-    @keyframes pop{ 0% { transform: scale(.92); } 100% { transform: scale(1); } }
-    @keyframes shine{ 0% { box-shadow: inset 0 0 0 0 rgba(255,255,255,.0); } 35% { box-shadow: inset 0 0 0 999px rgba(255,255,255,.06); } 100% { box-shadow: inset 0 0 0 0 rgba(255,255,255,0); } }
+    .badge-anim{ position:relative; animation: pop .25s ease-out, shine 1.2s ease-out; }
+    @keyframes pop{ 0%{ transform:scale(.92);} 100%{ transform:scale(1);} }
 
     .muted{ color:var(--muted) }
     .totals{ display:flex; gap:16px; flex-wrap:wrap; margin-top:8px }
@@ -82,20 +83,20 @@
 
     /* Toast */
     #toast{ position:fixed; right:16px; bottom:16px; z-index:10000; display:none; background:#0b1220; border:1px solid #1f2937; color:#e5e7eb; padding:10px 14px; border-radius:10px; box-shadow:0 8px 20px var(--shadow); font-size:14px; min-width:200px; opacity:0; transform: translateY(8px); transition: opacity .2s ease, transform .2s ease; }
-    #toast.show{ display:block; opacity:1; transform: translateY(0); }
+    #toast.show{ display:block; opacity:1; transform:translateY(0); }
     #toast.ok{ border-color: rgba(22,163,74,.35); }
     #toast.error{ border-color: rgba(220,38,38,.35); }
 
     /* Botones con spinner */
-    button.loading{ position: relative; pointer-events: none; opacity: .9; filter: saturate(1.05); }
-    button.loading .btn-text{ opacity: .85; margin-left: 22px; transition: margin-left .2s ease, opacity .2s ease; }
-    button.loading::before{ content: ""; position:absolute; left: 10px; top: 50%; width:16px; height:16px; transform: translateY(-50%); border-radius: 50%; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; animation: spin 1s linear infinite; }
+    button.loading{ position: relative; pointer-events: none; opacity:.9; filter:saturate(1.05); }
+    button.loading .btn-text{ opacity:.85; margin-left:22px; transition: margin-left .2s ease, opacity .2s ease; }
+    button.loading::before{ content:""; position:absolute; left:10px; top:50%; width:16px; height:16px; transform:translateY(-50%); border-radius:50%; border:2px solid rgba(255,255,255,.35); border-top-color:#fff; animation: spin 1s linear infinite; }
 
     /* Menú 3 puntos */
-    .menu{ position: relative; margin-left: 8px; }
-    .menu-btn{ width:36px; height:36px; border-radius:10px; border:1px solid #1f2937; background:#0b1220; color:#e5e7eb; display:flex; align-items:center; justify-content:center; cursor:pointer; transition: border-color .2s ease, transform .15s ease; }
-    .menu-btn:hover{ border-color:#2b3b52; transform: translateY(-1px); }
-    .menu-panel{ position:absolute; right:0; top:calc(100% + 10px); background:#0b1220; border:1px solid #1f2937; border-radius:12px; min-width:260px; box-shadow: 0 12px 32px var(--shadow); padding: 10px; display:none; z-index: 20; animation: panelIn .16s ease; }
+    .menu{ position:relative; margin-left:8px; }
+    .menu-btn{ width:36px; height:36px; border-radius:10px; border:1px solid #1f2937; background:#0b1220; color:#e5e7eb; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:border-color .2s ease, transform .15s ease; }
+    .menu-btn:hover{ border-color:#2b3b52; transform:translateY(-1px); }
+    .menu-panel{ position:absolute; right:0; top:calc(100% + 10px); background:#0b1220; border:1px solid #1f2937; border-radius:12px; min-width:280px; box-shadow:0 12px 32px var(--shadow); padding:10px; display:none; z-index:20; animation: panelIn .16s ease; }
     .menu-panel.open{ display:block; }
     @keyframes panelIn{ from{ opacity:0; transform: translateY(-6px);} to{ opacity:1; transform: translateY(0);} }
     .menu-group{ padding:6px 6px 10px; border-bottom:1px solid #1f2937; margin-bottom:8px; }
@@ -107,8 +108,13 @@
     .chip.ok{ background:rgba(22,163,74,.15); color:#86efac; border-color: rgba(22,163,74,.25); }
     .chip.bad{ background:rgba(220,38,38,.15); color:#fca5a5; border-color: rgba(220,38,38,.25); }
     .chip.warn{ background:rgba(245,158,11,.15); color:#fcd34d; border-color: rgba(245,158,11,.25); }
-    .menu-row{ display:flex; gap:8px; align-items:center; }
-    .menu-row input[type="date"]{ flex:1; }
+
+    /* Paginación */
+    .pager{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:12px; }
+    .pager .info{ color:var(--muted); font-size:12px; margin-right:8px; }
+    .pager .pg{ padding:6px 10px; border-radius:10px; border:1px solid #1f2937; background:#0b1220; color:#e5e7eb; cursor:pointer; font-size:13px; }
+    .pager .pg[disabled]{ opacity:.5; cursor:not-allowed; }
+    .pager .pg.active{ background:var(--accent); border-color:transparent; color:#fff; }
   </style>
 </head>
 <body>
@@ -129,7 +135,7 @@
 
       <!-- Menú 3 puntos -->
       <div class="menu" id="menu">
-        <button class="menu-btn" id="menuBtn" aria-haspopup="true" aria-expanded="false" title="Filtros">
+        <button class="menu-btn" id="menuBtn" aria-haspopup="true" aria-expanded="false" title="Filtros y opciones">
           &#8942;
         </button>
         <div class="menu-panel" id="menuPanel" role="menu" aria-hidden="true">
@@ -144,9 +150,9 @@
           </div>
           <div class="menu-group">
             <div class="menu-title">Filtrar por fecha + estado</div>
-            <div class="menu-row">
-              <input type="date" id="fltDate" />
-              <select id="fltStatus">
+            <div class="menu-row" style="display:flex; gap:8px; align-items:center;">
+              <input type="date" id="fltDate" style="flex:1;" />
+              <select id="fltStatus" style="flex:1;">
                 <option value="ALL">Todos</option>
                 <option value="ENTREGADO">Entregados</option>
                 <option value="CANCEL">Cancelados</option>
@@ -158,6 +164,14 @@
               <button class="chip" onclick="clearFilters()">Quitar filtros</button>
             </div>
           </div>
+          <div class="menu-group">
+            <div class="menu-title">Volumen y velocidad</div>
+            <div class="menu-actions">
+              <button class="chip" onclick="setPageSize(500)">Paginar de a 500</button>
+              <button class="chip" onclick="setPageSize(1000)">Paginar de a 1000</button>
+              <button class="chip" onclick="toggleSplitTwo()">Dividir en 2 hojas</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -167,7 +181,7 @@
     <div class="card">
       <div class="tabs">
         <div class="tab active" id="tab-driver" onclick="switchTab('driver')">Por chofer</div>
-        <div class="tab" id="tab-comp" onclick="switchTab('comp')">Por comprobante</div>
+        <div class="tab" id="tab-comp"   onclick="switchTab('comp')">Por comprobante</div>
       </div>
 
       <!-- TAB CHOFER -->
@@ -251,6 +265,9 @@
         </table>
       </div>
 
+      <!-- Paginación -->
+      <div id="pager" class="pager" style="display:none;"></div>
+
       <div class="footer">JUCA®</div>
     </div>
   </div>
@@ -268,20 +285,22 @@
     // ======= Estado local =======
     const state = {
       active: 'driver',
-      currentRows: [],   // resultados crudos
-      viewRows: []       // resultados para mostrar (filtrados)
+      currentRows: [],
+      viewRows: [],
+      page: 1,
+      pageSize: 500,
+      splitTwo: false,    // si true, divide resultados en 2 “hojas”
     };
 
-    // ======= Performance knobs (TURBO) =======
-    const MAX_ANIM_ROWS = 600;   // sobre esto, se quitan animaciones de fila
-    const CHUNK_SIZE    = 100;   // render en tandas de 100 filas
-    const FAST_MODE_AT  = 3000;  // sobre esto, badgeEstado pasa a texto simple
+    // ======= Performance dinámica =======
+    const CORES = navigator.hardwareConcurrency || 4;
+    const MAX_ANIM_ROWS = 600;
+    const CHUNK_SIZE    = CORES >= 8 ? 300 : CORES >= 4 ? 150 : 90;
+    const FAST_MODE_AT  = CORES >= 8 ? 1200 : 800;
 
-    // ======= Normalización/fechas (para filtros robustos) =======
+    // ======= Normalización/fechas =======
     function normTxt(s){
-      return String(s||'')
-        .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-        .toUpperCase().replace(/\s+/g,' ').trim();
+      return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
     }
     function toISODateOnly(anyDateText){
       const t = String(anyDateText||'').trim();
@@ -300,15 +319,13 @@
 
     // ======= Arranque =======
     (function init(){
-      // Cargar nombres para autocompletar
+      // Nombres para autocompletar
       apiGet({ action:'getNames' }).then(names=>{
         const dl = document.getElementById('names');
-        names.forEach(n=>{
-          const o = document.createElement('option'); o.value = n; dl.appendChild(o);
-        });
+        names.forEach(n=>{ const o=document.createElement('option'); o.value=n; dl.appendChild(o); });
       }).catch(console.error);
 
-      // Fecha de hoy por defecto
+      // Hoy por defecto
       const today = new Date();
       const yyyy = today.getFullYear();
       const mm = String(today.getMonth()+1).padStart(2,'0');
@@ -347,9 +364,12 @@
         el.style.display='none';
         el.querySelector('tbody').innerHTML='';
       });
+      document.getElementById('pager').style.display='none';
+      document.getElementById('pager').innerHTML='';
       document.getElementById('totals').style.display='none';
       state.viewRows = [];
       state.currentRows = [];
+      state.page = 1;
     }
 
     // ======= Helpers visuales =======
@@ -376,11 +396,28 @@
       btn.disabled = !!isLoading;
     }
 
-    // ======= Filtros (menú 3 puntos) =======
+    // ======= Opciones de volumen =======
+    function setPageSize(n){
+      state.splitTwo = false;
+      state.pageSize = n;
+      state.page = 1;
+      rerender();
+      showToast(`Paginación: ${n} por página`, 'ok');
+      closeMenu();
+    }
+    function toggleSplitTwo(){
+      state.splitTwo = !state.splitTwo;
+      state.page = 1;
+      rerender();
+      showToast(state.splitTwo ? 'Dividido en 2 hojas' : 'Paginación normal', 'ok');
+      closeMenu();
+    }
+
+    // ======= Filtros (menú) =======
     function applyQuickStatus(status){
       document.getElementById('fltStatus').value = status;
       const dateVal = document.getElementById('fltDate').value || '';
-      maybeGlobalFilter(status, dateVal); // intenta traer todos del día por estado
+      maybeGlobalFilter(status, dateVal);
       closeMenu();
     }
     function applyFilters(){
@@ -402,8 +439,7 @@
       btn.setAttribute('aria-expanded', 'false');
     }
 
-    // 💡 Si hay fecha y status ≠ ALL, intentamos buscar TODO el día por ese estado (global).
-    // Si falla, caemos al filtro local.
+    // ======= Filtro global (día + estado) =======
     function maybeGlobalFilter(status, dateISO){
       const hasGlobalIntent = status !== 'ALL' && !!dateISO;
       if (!hasGlobalIntent){
@@ -420,9 +456,7 @@
         .then(rows=>{
           state.currentRows = rows || [];
           state.viewRows = state.currentRows.slice();
-          renderRows(state.active==='driver' ? 'tbl-driver' : 'tbl-comp', state.viewRows);
-          const tableEl = document.getElementById(state.active==='driver' ? 'tbl-driver' : 'tbl-comp');
-          if (tableEl) tableEl.style.display = state.viewRows.length ? 'table' : 'none';
+          rerender();
           setLoading(false);
           setButtonLoading(btnId, false);
           showToast(`Listo (global): ${state.viewRows.length}`, 'ok');
@@ -435,18 +469,16 @@
         });
     }
 
-    // Filtro robusto por estado + fecha (local)
+    // Filtro local
     function applyFilterToView(status='ALL', dateISO=''){
       const wantISO = String(dateISO||'').slice(0,10);
       const rows = state.currentRows || [];
 
       const filtered = rows.filter(r=>{
         const st = normTxt(r.estado);
-
         const isEntregado = st.includes('ENTREG') && !st.includes('NO ENTREG');
         const isCancelado = st.includes('CANCEL') || st.includes('ANUL') || st.includes('RECHAZ');
-        const isEnCamino  = st.includes('EN CAMINO') || st.includes('ENCAMINO') ||
-                            st.includes('TRANSITO')  || st.includes('TR NSITO');
+        const isEnCamino  = st.includes('EN CAMINO') || st.includes('ENCAMINO') || st.includes('TRANSITO') || st.includes('TR NSITO');
 
         const okStatus =
           status==='ALL'       ? true :
@@ -461,19 +493,14 @@
       });
 
       state.viewRows = filtered;
-      renderRows(state.active==='driver' ? 'tbl-driver' : 'tbl-comp', state.viewRows);
+      state.page = 1;
+      rerender();
       showToast(`Filtro aplicado: ${state.viewRows.length} resultado(s)`, 'ok', 1400);
     }
 
     // ======= Buscadores =======
     function buscarPorChofer(){
-      ['tbl-driver','tbl-comp'].forEach(id=>{
-        const el = document.getElementById(id);
-        if (!el) return; el.style.display='none'; el.querySelector('tbody').innerHTML='';
-      });
-      document.getElementById('totals').style.display='none';
-      state.currentRows = []; state.viewRows = [];
-
+      clearTables();
       const name = document.getElementById('inp-name').value.trim();
       const date = document.getElementById('inp-date').value;
       if (!name){ alert('Ingresá un nombre.'); return; }
@@ -487,15 +514,15 @@
         .then(res=>{
           state.currentRows = res.rows || [];
           state.viewRows = state.currentRows.slice();
-          renderRows('tbl-driver', state.viewRows);
           const t = res.totals || {paq:0,first:'',last:''};
-          document.getElementById('t-paq').textContent = `PAQ: ${t.paq}`;
+          document.getElementById('t-paq').textContent   = `PAQ: ${t.paq}`;
           document.getElementById('t-first').textContent = `Primero: ${t.first || '-'}`;
-          document.getElementById('t-last').textContent = `Último: ${t.last || '-'}`;
+          document.getElementById('t-last').textContent  = `Último: ${t.last || '-'}`;
           document.getElementById('totals').style.display = 'flex';
+          rerender();
           setLoading(false);
-          showToast(`Listo. Resultados: ${state.viewRows.length}`, 'ok');
           setButtonLoading('btn-search-driver', false);
+          showToast(`Listo. Resultados: ${state.viewRows.length}`, 'ok');
         })
         .catch(err=>{
           setLoading(false);
@@ -506,12 +533,7 @@
     }
 
     function buscarPorComprobante(){
-      ['tbl-driver','tbl-comp'].forEach(id=>{
-        const el = document.getElementById(id);
-        if (!el) return; el.style.display='none'; el.querySelector('tbody').innerHTML='';
-      });
-      state.currentRows = []; state.viewRows = [];
-
+      clearTables();
       const comp = document.getElementById('inp-comp').value.trim();
       const cd   = document.getElementById('inp-cd').value.trim();
       if (!comp && !cd){ alert('Ingresá un comprobante o un CD de venta.'); return; }
@@ -524,10 +546,10 @@
         .then(rows=>{
           state.currentRows = rows || [];
           state.viewRows = state.currentRows.slice();
-          renderRows('tbl-comp', state.viewRows);
+          rerender();
           setLoading(false);
-          showToast(`Listo. Resultados: ${state.viewRows.length}`, 'ok');
           setButtonLoading('btn-search-comp', false);
+          showToast(`Listo. Resultados: ${state.viewRows.length}`, 'ok');
         })
         .catch(err=>{
           setLoading(false);
@@ -537,7 +559,12 @@
         });
     }
 
-    // ======= Render (TURBO / chunked) =======
+    // ======= Render con paginación =======
+    function rerender(){
+      const tblId = (state.active==='driver') ? 'tbl-driver' : 'tbl-comp';
+      renderRows(tblId, state.viewRows);
+    }
+
     function renderRows(tableId, rows){
       const tbl = document.getElementById(tableId);
       const tb  = tbl.querySelector('tbody');
@@ -545,29 +572,35 @@
 
       if (!rows || !rows.length) {
         tbl.style.display = 'none';
+        document.getElementById('pager').style.display='none';
         alert('⛔ NO SE ENCONTRÓ DESPACHO.');
         return;
       }
 
-      const doAnim   = rows.length <= MAX_ANIM_ROWS;
-      const fastMode = rows.length >= FAST_MODE_AT;
+      // Cálculo de paginado
+      const total = rows.length;
+      const pageSize = state.splitTwo ? Math.ceil(total/2) : state.pageSize;
+      const pageCount = Math.max(1, Math.ceil(total / pageSize));
+      if (state.page > pageCount) state.page = pageCount;
+
+      const start = (state.page - 1) * pageSize;
+      const end   = Math.min(start + pageSize, total);
+      const slice = rows.slice(start, end);
+
+      const doAnim   = slice.length <= MAX_ANIM_ROWS;
+      const fastMode = slice.length >= FAST_MODE_AT;
 
       let i = 0;
       function paintChunk(){
-        const end = Math.min(i + CHUNK_SIZE, rows.length);
+        const endIdx = Math.min(i + CHUNK_SIZE, slice.length);
         const frag = document.createDocumentFragment();
 
-        for (; i < end; i++){
-          const r = rows[i];
+        for (; i < endIdx; i++){
+          const r = slice[i];
           const tr = document.createElement('tr');
-          if (doAnim) {
-            tr.className = 'row-anim';
-            tr.style.animationDelay = (i % 100) * 5 + 'ms';
-          }
+          if (doAnim) { tr.className = 'row-anim'; tr.style.animationDelay = (i % 100) * 5 + 'ms'; }
 
-          const estadoCell = fastMode
-            ? `<span class="muted">${esc(r.estado)}</span>`
-            : badgeEstado(r.estado);
+          const estadoCell = fastMode ? `<span class="muted">${esc(r.estado)}</span>` : badgeEstado(r.estado);
 
           tr.innerHTML = `
             <td>${esc(r.nombre)}</td>
@@ -583,14 +616,57 @@
 
         tb.appendChild(frag);
 
-        if (i < rows.length) {
+        if (i < slice.length) {
           requestAnimationFrame(paintChunk);
         } else {
           tbl.style.display = 'table';
+          renderPager(pageCount, start+1, end, total);
         }
       }
 
       requestAnimationFrame(paintChunk);
+    }
+
+    function renderPager(pageCount, from, to, total){
+      const p = document.getElementById('pager');
+      p.innerHTML = '';
+      if (pageCount <= 1){
+        p.style.display = 'none';
+        return;
+      }
+      p.style.display = 'flex';
+
+      const info = document.createElement('span');
+      info.className = 'info';
+      info.textContent = `Mostrando ${from}-${to} de ${total}`;
+      p.appendChild(info);
+
+      // Botón anterior
+      p.appendChild(pgBtn('‹ Anterior', state.page<=1, ()=>{ state.page--; rerender(); }));
+
+      // Números (ventana de 7)
+      const windowSize = 7;
+      let start = Math.max(1, state.page - Math.floor(windowSize/2));
+      let end   = Math.min(pageCount, start + windowSize - 1);
+      if (end - start + 1 < windowSize) start = Math.max(1, end - windowSize + 1);
+
+      for(let i=start; i<=end; i++){
+        const b = pgBtn(String(i), false, ()=>{ state.page = i; rerender(); });
+        if (i === state.page) b.classList.add('active');
+        p.appendChild(b);
+      }
+
+      // Botón siguiente
+      p.appendChild(pgBtn('Siguiente ›', state.page>=pageCount, ()=>{ state.page++; rerender(); }));
+    }
+
+    function pgBtn(txt, disabled, onClick){
+      const b = document.createElement('button');
+      b.className = 'pg';
+      b.textContent = txt;
+      if (disabled){ b.disabled = true; }
+      else { b.onclick = onClick; }
+      return b;
     }
 
     function badgeEstado(estado){
